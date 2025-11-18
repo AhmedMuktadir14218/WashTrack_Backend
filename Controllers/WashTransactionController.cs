@@ -1,0 +1,449 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using wsahRecieveDelivary.DTOs;
+using wsahRecieveDelivary.Models.Enums;
+using wsahRecieveDelivary.Services;
+
+namespace wsahRecieveDelivary.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize]
+    public class WashTransactionController : ControllerBase
+    {
+        private readonly IWashTransactionService _service;
+
+        public WashTransactionController(IWashTransactionService service)
+        {
+            _service = service;
+        }
+
+        // ==========================================
+        // CREATE RECEIVE
+        // ==========================================
+        /// <summary>
+        /// Create a receive transaction
+        /// </summary>
+        [HttpPost("receive")]
+        public async Task<IActionResult> CreateReceive([FromBody] CreateWashTransactionDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var result = await _service.CreateReceiveAsync(dto, userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Receive transaction created successfully",
+                    data = result
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // CREATE DELIVERY
+        // ==========================================
+        /// <summary>
+        /// Create a delivery transaction
+        /// </summary>
+        [HttpPost("delivery")]
+        public async Task<IActionResult> CreateDelivery([FromBody] CreateWashTransactionDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var result = await _service.CreateDeliveryAsync(dto, userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Delivery transaction created successfully",
+                    data = result
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET ALL TRANSACTIONS
+        // ==========================================
+        /// <summary>
+        /// Get all transactions
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var transactions = await _service.GetAllAsync();
+                return Ok(new
+                {
+                    success = true,
+                    count = transactions.Count,
+                    data = transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET BY ID
+        // ==========================================
+        /// <summary>
+        /// Get transaction by ID
+        /// </summary>
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            try
+            {
+                var transaction = await _service.GetByIdAsync(id);
+                if (transaction == null)
+                {
+                    return NotFound(new { success = false, message = $"Transaction with ID {id} not found" });
+                }
+
+                return Ok(new { success = true, data = transaction });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET BY WORK ORDER
+        // ==========================================
+        /// <summary>
+        /// Get all transactions for a work order
+        /// </summary>
+        [HttpGet("workorder/{workOrderId}")]
+        public async Task<IActionResult> GetByWorkOrder(int workOrderId)
+        {
+            try
+            {
+                var transactions = await _service.GetByWorkOrderAsync(workOrderId);
+                return Ok(new
+                {
+                    success = true,
+                    workOrderId = workOrderId,
+                    count = transactions.Count,
+                    data = transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // ✅ CHANGED: GET BY STAGE (int instead of enum)
+        // ==========================================
+        /// <summary>
+        /// Get all transactions for a process stage
+        /// </summary>
+        [HttpGet("stage/{processStageId}")]
+        public async Task<IActionResult> GetByStage(int processStageId)
+        {
+            try
+            {
+                var transactions = await _service.GetByStageAsync(processStageId);
+                return Ok(new
+                {
+                    success = true,
+                    processStageId = processStageId,
+                    count = transactions.Count,
+                    data = transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // FILTER TRANSACTIONS
+        // ==========================================
+        /// <summary>
+        /// Filter transactions by multiple criteria
+        /// </summary>
+        [HttpPost("filter")]
+        public async Task<IActionResult> Filter([FromBody] WashTransactionFilterDto filter)
+        {
+            try
+            {
+                var transactions = await _service.GetByFilterAsync(filter);
+                return Ok(new
+                {
+                    success = true,
+                    count = transactions.Count,
+                    data = transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // UPDATE TRANSACTION
+        // ==========================================
+        /// <summary>
+        /// Update transaction (Admin only)
+        /// </summary>
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(int id, [FromBody] CreateWashTransactionDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var result = await _service.UpdateAsync(id, dto, userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Transaction updated successfully",
+                    data = result
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // DELETE TRANSACTION
+        // ==========================================
+        /// <summary>
+        /// Delete transaction (Admin only)
+        /// </summary>
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var result = await _service.DeleteAsync(id);
+                if (!result)
+                {
+                    return NotFound(new { success = false, message = $"Transaction with ID {id} not found" });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Transaction deleted successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET BALANCES BY WORK ORDER
+        // ==========================================
+        /// <summary>
+        /// Get stage-wise balances for a work order
+        /// </summary>
+        [HttpGet("balance/workorder/{workOrderId}")]
+        public async Task<IActionResult> GetBalances(int workOrderId)
+        {
+            try
+            {
+                var balances = await _service.GetBalancesByWorkOrderAsync(workOrderId);
+                return Ok(new
+                {
+                    success = true,
+                    workOrderId = workOrderId,
+                    data = balances
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET WASH STATUS
+        // ==========================================
+        /// <summary>
+        /// Get complete wash status for a work order
+        /// </summary>
+        [HttpGet("status/workorder/{workOrderId}")]
+        public async Task<IActionResult> GetWashStatus(int workOrderId)
+        {
+            try
+            {
+                var status = await _service.GetWashStatusAsync(workOrderId);
+                if (status == null)
+                {
+                    return NotFound(new { success = false, message = $"WorkOrder with ID {workOrderId} not found" });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    data = status
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET ALL WASH STATUSES
+        // ==========================================
+        /// <summary>
+        /// Get wash status for all work orders
+        /// </summary>
+        [HttpGet("status/all")]
+        public async Task<IActionResult> GetAllStatuses()
+        {
+            try
+            {
+                var statuses = await _service.GetAllWashStatusesAsync();
+                return Ok(new
+                {
+                    success = true,
+                    count = statuses.Count,
+                    data = statuses
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // GET STAGE SUMMARY
+        // ==========================================
+        /// <summary>
+        /// Get summary report for all stages
+        /// </summary>
+        [HttpGet("summary/stages")]
+        public async Task<IActionResult> GetStageSummary()
+        {
+            try
+            {
+                var summary = await _service.GetStageSummaryAsync();
+                return Ok(new
+                {
+                    success = true,
+                    data = summary
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // ✅ CHANGED: GET RECEIVES BY STAGE (int instead of enum)
+        // ==========================================
+        /// <summary>
+        /// Get all receive transactions for a stage
+        /// </summary>
+        [HttpGet("receives/stage/{processStageId}")]
+        public async Task<IActionResult> GetReceivesByStage(int processStageId, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var transactions = await _service.GetReceivesByStageAsync(processStageId, startDate, endDate);
+                return Ok(new
+                {
+                    success = true,
+                    processStageId = processStageId,
+                    startDate = startDate,
+                    endDate = endDate,
+                    count = transactions.Count,
+                    data = transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==========================================
+        // ✅ CHANGED: GET DELIVERIES BY STAGE (int instead of enum)
+        // ==========================================
+        /// <summary>
+        /// Get all delivery transactions for a stage
+        /// </summary>
+        [HttpGet("deliveries/stage/{processStageId}")]
+        public async Task<IActionResult> GetDeliveriesByStage(int processStageId, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var transactions = await _service.GetDeliveriesByStageAsync(processStageId, startDate, endDate);
+                return Ok(new
+                {
+                    success = true,
+                    processStageId = processStageId,
+                    startDate = startDate,
+                    endDate = endDate,
+                    count = transactions.Count,
+                    data = transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+    }
+}
