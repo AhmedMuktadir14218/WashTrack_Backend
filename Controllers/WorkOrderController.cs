@@ -25,6 +25,7 @@ namespace wsahRecieveDelivary.Controllers
         /// Get all work orders
         /// </summary>
         [HttpGet]
+        //[AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -306,6 +307,52 @@ namespace wsahRecieveDelivary.Controllers
             }
         }
 
+
+        // ==========================================
+        // GET PAGINATED WITH FAST SEARCH (ADD THIS)
+        // ==========================================
+        /// <summary>
+        /// Get work orders with pagination, fast search, and advanced filters
+        /// User can search ANY data (WorkOrderNo, Buyer, Style, Color, Quantity, etc.)
+        /// </summary>
+        /// <param name="request">Pagination parameters</param>
+        [HttpGet("paginated")]
+        [ProducesResponseType(typeof(PaginatedResponseDto<WorkOrderResponseDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> GetPaginated([FromQuery] PaginationRequestDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Invalid pagination parameters",
+                        errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                    });
+                }
+
+                var result = await _workOrderService.GetPaginatedAsync(request);
+
+                if (!result.Success)
+                {
+                    return StatusCode(500, result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Error retrieving paginated work orders: {ex.Message}"
+                });
+            }
+        }
+
         // ==========================================
         // DOWNLOAD EXCEL TEMPLATE
         // ==========================================
@@ -385,4 +432,6 @@ namespace wsahRecieveDelivary.Controllers
             }
         }
     }
+
+
 }

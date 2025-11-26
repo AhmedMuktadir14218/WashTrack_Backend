@@ -10,7 +10,8 @@ namespace wsahRecieveDelivary.Data
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
 
             optionsBuilder.UseSqlServer(
-           "Server = UODY-MIS\\SQLEXPRESS;Database=wsahRecieveDelivary; User Id=udoy;Password=udoy; TrustServerCertificate=True;MultipleActiveResultSets=true"
+           //"Server = UODY-MIS\\SQLEXPRESS;Database=wsahRD; User Id=udoy;Password=udoy; TrustServerCertificate=True;MultipleActiveResultSets=true"
+           "Server = 192.168.11.39\\SQLSERVERDB;Database=wsahRD; User Id=TDS;Password=Sk123; TrustServerCertificate=True;MultipleActiveResultSets=true"
        );
 
             return new ApplicationDbContext(optionsBuilder.Options);

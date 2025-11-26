@@ -66,7 +66,7 @@ namespace wsahRecieveDelivary.DTOs
         public string? Remarks { get; set; }
         public string? ReceivedBy { get; set; }
         public string? DeliveredTo { get; set; }
-
+        public int CreatedBy { get; set; }
         public string CreatedByUsername { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string? UpdatedByUsername { get; set; }

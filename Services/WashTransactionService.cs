@@ -131,6 +131,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt,
                     UpdatedByUsername = t.UpdatedByUser != null ? t.UpdatedByUser.Username : null,
@@ -170,6 +171,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt
                 })
@@ -207,6 +209,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt
                 })
@@ -244,6 +247,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt
                 })
@@ -301,6 +305,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt
                 })
@@ -549,6 +554,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt
                 })
@@ -594,6 +600,7 @@ namespace wsahRecieveDelivary.Services
                     Remarks = t.Remarks,
                     ReceivedBy = t.ReceivedBy,
                     DeliveredTo = t.DeliveredTo,
+                    CreatedBy = t.CreatedBy,
                     CreatedByUsername = t.CreatedByUser.Username,
                     CreatedAt = t.CreatedAt
                 })

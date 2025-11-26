@@ -12,5 +12,8 @@ namespace wsahRecieveDelivary.Services
         Task<WorkOrderResponseDto?> GetByWorkOrderNoAsync(string workOrderNo);
         Task<List<WorkOrderResponseDto>> GetAllAsync();
         Task<WorkOrderBulkUploadResponseDto> BulkUploadFromExcelAsync(IFormFile file, int userId);
+
+        // ✅ ADD THIS LINE
+        Task<PaginatedResponseDto<WorkOrderResponseDto>> GetPaginatedAsync(PaginationRequestDto request);
     }
 }

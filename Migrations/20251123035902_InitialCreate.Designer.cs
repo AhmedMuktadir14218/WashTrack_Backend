@@ -12,8 +12,8 @@ using wsahRecieveDelivary.Data;
 namespace wsahRecieveDelivary.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251112045616_RecreateWashTransactions2")]
-    partial class RecreateWashTransactions2
+    [Migration("20251123035902_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

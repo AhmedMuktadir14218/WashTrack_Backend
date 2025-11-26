@@ -4,8 +4,8 @@ using OfficeOpenXml;
 using System.Globalization;
 using wsahRecieveDelivary.Data;
 using wsahRecieveDelivary.DTOs;
-using wsahRecieveDelivary.Models;
-
+using wsahRecieveDelivary.Extensions;
+using wsahRecieveDelivary.Models; 
 namespace wsahRecieveDelivary.Services
 {
     public class WorkOrderService : IWorkOrderService
@@ -415,6 +415,112 @@ namespace wsahRecieveDelivary.Services
 
             return response;
         }
+
+
+
+        // ==========================================
+        // GET PAGINATED WITH FAST SEARCH
+        // ==========================================
+        public async Task<PaginatedResponseDto<WorkOrderResponseDto>> GetPaginatedAsync(
+            PaginationRequestDto request)
+        {
+            try
+            {
+                // Build query with AsNoTracking for read-only performance
+                var query = _context.WorkOrders
+                    .AsNoTracking() // ← 40-50% faster!
+                    .Include(w => w.CreatedByUser)
+                    .Include(w => w.UpdatedByUser)
+                    .AsQueryable();
+
+                // Apply global search
+                query = query.Search(request.SearchTerm);
+
+                // Apply advanced filters
+                query = query.ApplyFilters(
+                    request.Factory,
+                    request.Buyer,
+                    request.WashType,
+                    request.Line,
+                    request.Unit,
+                    request.FromDate,
+                    request.ToDate
+                );
+
+                // Apply sorting
+                query = query.ApplySort(request.SortBy, request.SortOrder);
+
+                // Get total count BEFORE pagination (optimized)
+                var totalCount = await query.CountAsync();
+
+                // Calculate total pages
+                var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+
+                // Apply pagination
+                var skip = (request.Page - 1) * request.PageSize;
+                var data = await query
+                    .Skip(skip)
+                    .Take(request.PageSize)
+                    .Select(w => new WorkOrderResponseDto
+                    {
+                        Id = w.Id,
+                        Factory = w.Factory,
+                        Line = w.Line,
+                        Unit = w.Unit,
+                        Buyer = w.Buyer,
+                        BuyerDepartment = w.BuyerDepartment,
+                        StyleName = w.StyleName,
+                        FastReactNo = w.FastReactNo,
+                        Color = w.Color,
+                        WorkOrderNo = w.WorkOrderNo,
+                        WashType = w.WashType,
+                        OrderQuantity = w.OrderQuantity,
+                        CutQty = w.CutQty,
+                        TOD = w.TOD,
+                        SewingCompDate = w.SewingCompDate,
+                        FirstRCVDate = w.FirstRCVDate,
+                        WashApprovalDate = w.WashApprovalDate,
+                        WashTargetDate = w.WashTargetDate,
+                        TotalWashReceived = w.TotalWashReceived,
+                        TotalWashDelivery = w.TotalWashDelivery,
+                        WashBalance = w.WashBalance,
+                        FromReceived = w.FromReceived,
+                        Marks = w.Marks,
+                        CreatedAt = w.CreatedAt,
+                        UpdatedAt = w.UpdatedAt,
+                        CreatedByUsername = w.CreatedByUser.Username,
+                        UpdatedByUsername = w.UpdatedByUser != null ? w.UpdatedByUser.Username : null
+                    })
+                    .ToListAsync();
+
+                return new PaginatedResponseDto<WorkOrderResponseDto>
+                {
+                    Success = true,
+                    Message = totalCount == 0 ? "No records found" : null,
+                    Data = data,
+                    Pagination = new PaginationMetadata
+                    {
+                        CurrentPage = request.Page,
+                        PageSize = request.PageSize,
+                        TotalRecords = totalCount,
+                        TotalPages = totalPages,
+                        HasPrevious = request.Page > 1,
+                        HasNext = request.Page < totalPages
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new PaginatedResponseDto<WorkOrderResponseDto>
+                {
+                    Success = false,
+                    Message = $"Error retrieving work orders: {ex.Message}",
+                    Data = new List<WorkOrderResponseDto>(),
+                    Pagination = new PaginationMetadata()
+                };
+            }
+        }
+
 
         // ==========================================
         // HELPER METHODS
