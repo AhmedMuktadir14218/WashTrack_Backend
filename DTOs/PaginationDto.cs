@@ -72,4 +72,55 @@ namespace wsahRecieveDelivary.DTOs
         public int FirstPage => 1;
         public int LastPage => TotalPages;
     }
+
+
+    // ==========================================
+    // TRANSACTION PAGINATION REQUEST
+    // ==========================================
+    // ==========================================
+    // TRANSACTION PAGINATION REQUEST (UPDATED)
+    // ==========================================
+    public class TransactionPaginationRequestDto
+    {
+        private const int MaxPageSize = 100;
+        private int _pageSize = 10;
+
+        [Range(1, int.MaxValue, ErrorMessage = "Page must be greater than 0")]
+        public int Page { get; set; } = 1;
+
+        [Range(1, MaxPageSize, ErrorMessage = "PageSize must be between 1 and 100")]
+        public int PageSize
+        {
+            get => _pageSize;
+            set => _pageSize = value > MaxPageSize ? MaxPageSize : value;
+        }
+
+        /// <summary>
+        /// Search across all fields (WorkOrderNo, Buyer, Style, BatchNo, GatePassNo, Remarks, etc.)
+        /// </summary>
+        public string? SearchTerm { get; set; }
+
+        /// <summary>
+        /// Sort by: TransactionDate, WorkOrderNo, Buyer, StyleName, Quantity, TransactionType, Stage, Factory, CreatedAt
+        /// </summary>
+        public string? SortBy { get; set; } = "TransactionDate";
+
+        /// <summary>
+        /// Sort order: asc or desc
+        /// </summary>
+        public string SortOrder { get; set; } = "desc";
+
+        // ==========================================
+        // ADVANCED FILTERS
+        // ==========================================
+        public string? Buyer { get; set; }
+        public string? Factory { get; set; }
+        public string? Unit { get; set; } // ✅ ADDED
+        public int? ProcessStageId { get; set; }
+        public int? TransactionTypeId { get; set; }  // 0 = Receive, 1 = Delivery
+
+        // ✅ CRITICAL: Renamed from FromDate/ToDate to match URL parameters
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
 }

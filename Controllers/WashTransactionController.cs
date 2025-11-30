@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Formats.Asn1;
+using System.Globalization;
 using System.Security.Claims;
 using wsahRecieveDelivary.DTOs;
 using wsahRecieveDelivary.Models.Enums;
 using wsahRecieveDelivary.Services;
-
+using CsvHelper; 
 namespace wsahRecieveDelivary.Controllers
 {
     [Route("api/[controller]")]
@@ -443,6 +446,129 @@ namespace wsahRecieveDelivary.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+
+        // ==========================================
+        // GET PAGINATED WITH FAST SEARCH
+        // ==========================================
+        /// <summary>
+        /// Get transactions with pagination, fast search, and advanced filters
+        /// User can search ANY data (WorkOrderNo, Buyer, Style, BatchNo, GatePassNo, etc.)
+        /// </summary>
+        [HttpGet("paginated")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(PaginatedResponseDto<WashTransactionResponseDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> GetPaginated([FromQuery] TransactionPaginationRequestDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Invalid pagination parameters",
+                        errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                    });
+                }
+
+                var result = await _service.GetPaginatedAsync(request);
+
+                if (!result.Success)
+                {
+                    return StatusCode(500, result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Error retrieving paginated transactions: {ex.Message}"
+                });
+            }
+        }
+
+        // ==========================================
+        // EXPORT TO CSV
+        // ==========================================
+        /// <summary>
+        /// Export transactions to CSV file with filters
+        /// </summary>
+        // ==========================================
+        // EXPORT TO CSV
+        // ==========================================
+        /// <summary>
+        /// Export transactions to CSV file with filters
+        /// </summary>
+        [HttpGet("export/csv")]
+        public async Task<IActionResult> ExportToCSV(
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] string? buyer = null,
+            [FromQuery] string? factory = null,
+            [FromQuery] string? unit = null, // ✅ ADDED
+            [FromQuery] int? processStageId = null,
+            [FromQuery] int? transactionTypeId = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                Console.WriteLine($"📥 Export request received");
+                Console.WriteLine($"   SearchTerm: {searchTerm}");
+                Console.WriteLine($"   Buyer: {buyer}");
+                Console.WriteLine($"   Factory: {factory}");
+                Console.WriteLine($"   Unit: {unit}"); // ✅ ADDED
+                Console.WriteLine($"   ProcessStageId: {processStageId}");
+                Console.WriteLine($"   TransactionTypeId: {transactionTypeId}");
+                Console.WriteLine($"   StartDate: {startDate}");
+                Console.WriteLine($"   EndDate: {endDate}");
+
+                // ✅ UPDATED: Pass unit parameter
+                var csvBytes = await _service.ExportToCSVAsync(
+                    searchTerm,
+                    buyer,
+                    factory,
+                    unit, // ✅ ADDED
+                    processStageId,
+                    transactionTypeId,
+                    startDate,
+                    endDate
+                );
+
+                if (csvBytes == null || csvBytes.Length == 0)
+                {
+                    Console.WriteLine("❌ Empty CSV generated");
+                    return BadRequest(new { success = false, message = "No data to export" });
+                }
+
+                Console.WriteLine($"✅ CSV generated successfully - Size: {csvBytes.Length} bytes");
+
+                var fileName = $"Transactions_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
+
+                return File(
+                    csvBytes,
+                    "text/csv",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Export error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = ex.Message,
+                    details = ex.StackTrace
+                });
             }
         }
     }
