@@ -15,13 +15,13 @@ namespace wsahRecieveDelivary.DTOs
         public TransactionType TransactionType { get; set; }
 
         [Required(ErrorMessage = "ProcessStageId is required")]
-        public int ProcessStageId { get; set; }  // ✅ CHANGED
+        public int ProcessStageId { get; set; }
 
         [Required(ErrorMessage = "Quantity is required")]
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be greater than 0")]
         public int Quantity { get; set; }
 
-        public DateTime? TransactionDate { get; set; }
+        // ❌ REMOVED: public DateTime? TransactionDate { get; set; }
 
         [StringLength(100)]
         public string? BatchNo { get; set; }
