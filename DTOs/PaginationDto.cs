@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace wsahRecieveDelivary.DTOs
 {
@@ -95,32 +96,23 @@ namespace wsahRecieveDelivary.DTOs
             set => _pageSize = value > MaxPageSize ? MaxPageSize : value;
         }
 
-        /// <summary>
-        /// Search across all fields (WorkOrderNo, Buyer, Style, BatchNo, GatePassNo, Remarks, etc.)
-        /// </summary>
         public string? SearchTerm { get; set; }
-
-        /// <summary>
-        /// Sort by: TransactionDate, WorkOrderNo, Buyer, StyleName, Quantity, TransactionType, Stage, Factory, CreatedAt
-        /// </summary>
         public string? SortBy { get; set; } = "TransactionDate";
-
-        /// <summary>
-        /// Sort order: asc or desc
-        /// </summary>
         public string SortOrder { get; set; } = "desc";
 
-        // ==========================================
-        // ADVANCED FILTERS
-        // ==========================================
+        // Advanced Filters
         public string? Buyer { get; set; }
         public string? Factory { get; set; }
-        public string? Unit { get; set; } // ✅ ADDED
+        public string? Unit { get; set; }
         public int? ProcessStageId { get; set; }
-        public int? TransactionTypeId { get; set; }  // 0 = Receive, 1 = Delivery
+        public int? TransactionTypeId { get; set; }
 
-        // ✅ CRITICAL: Renamed from FromDate/ToDate to match URL parameters
+        // ✅ NEW: Optional date range for summary reports
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+
+        // ✅ NEW: Flag to include day-wise breakdown
+        [DefaultValue(false)]
+        public bool IncludeDayWiseBreakdown { get; set; } = false;
     }
 }

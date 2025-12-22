@@ -2,7 +2,9 @@
 
 namespace wsahRecieveDelivary.DTOs
 {
-    // For Creating/Updating Single WorkOrder
+    // ==========================================
+    // FOR CREATING/UPDATING WORK ORDER
+    // ==========================================
     public class WorkOrderDto
     {
         [Required]
@@ -46,7 +48,9 @@ namespace wsahRecieveDelivary.DTOs
         public string? Marks { get; set; }
     }
 
-    // For Excel Bulk Upload Response
+    // ==========================================
+    // FOR EXCEL BULK UPLOAD RESPONSE
+    // ==========================================
     public class WorkOrderBulkUploadResponseDto
     {
         public bool Success { get; set; }
@@ -58,7 +62,9 @@ namespace wsahRecieveDelivary.DTOs
         public List<string> Errors { get; set; } = new List<string>();
     }
 
-    // For Getting WorkOrder Details
+    // ==========================================
+    // WORK ORDER RESPONSE DTO (WITH STAGES)
+    // ==========================================
     public class WorkOrderResponseDto
     {
         public int Id { get; set; }
@@ -79,14 +85,41 @@ namespace wsahRecieveDelivary.DTOs
         public DateTime? FirstRCVDate { get; set; }
         public DateTime? WashApprovalDate { get; set; }
         public DateTime? WashTargetDate { get; set; }
+
+        // Legacy wash fields (from Excel)
         public int TotalWashReceived { get; set; }
         public int TotalWashDelivery { get; set; }
         public int WashBalance { get; set; }
         public int FromReceived { get; set; }
+
         public string? Marks { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string CreatedByUsername { get; set; } = string.Empty;
         public string? UpdatedByUsername { get; set; }
+
+        // ✅ Stage-wise balances
+        public List<StageBalanceDto> StageBalances { get; set; } = new();
+
+        // ✅ Totals from all stages
+        public int TotalStageReceived { get; set; }
+        public int TotalStageDelivered { get; set; }
+        public int TotalStageBalance { get; set; }
+        public decimal ProgressPercentage { get; set; }
+    }
+
+    // ==========================================
+    // STAGE BALANCE DTO
+    // ==========================================
+    public class StageBalanceDto
+    {
+        public int ProcessStageId { get; set; }
+        public string ProcessStageName { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
+        public int TotalReceived { get; set; }
+        public int TotalDelivered { get; set; }
+        public int CurrentBalance { get; set; }
+        public DateTime? LastReceiveDate { get; set; }
+        public DateTime? LastDeliveryDate { get; set; }
     }
 }

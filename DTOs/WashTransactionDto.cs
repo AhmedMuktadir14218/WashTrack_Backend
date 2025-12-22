@@ -91,6 +91,38 @@ namespace wsahRecieveDelivary.DTOs
         public DateTime? LastReceiveDate { get; set; }
         public DateTime? LastDeliveryDate { get; set; }
     }
+    public class StageWiseDetailedDto
+    {
+        public int ProcessStageId { get; set; }
+        public string ProcessStageName { get; set; } = string.Empty;
+
+        // Overall for this stage
+        public int TotalReceiveCount { get; set; }
+        public int TotalDeliveryCount { get; set; }
+        public int TotalReceivedQty { get; set; }
+        public int TotalDeliveredQty { get; set; }
+        public int CurrentBalance { get; set; }
+
+        // Work orders in this stage
+        public List<StageWorkOrderSummaryDto> WorkOrders { get; set; } = new();
+    }
+
+    // ==========================================
+    // STAGE WORK ORDER SUMMARY DTO
+    // ==========================================
+    public class StageWorkOrderSummaryDto
+    {
+        public int WorkOrderId { get; set; }
+        public string WorkOrderNo { get; set; } = string.Empty;
+        public string StyleName { get; set; } = string.Empty;
+        public string Buyer { get; set; } = string.Empty;
+        public string Factory { get; set; } = string.Empty;
+
+        public int ReceivedQty { get; set; }
+        public int DeliveredQty { get; set; }
+        public int Balance { get; set; }
+    }
+
 
     // ==========================================
     // WORK ORDER WASH STATUS DTO
@@ -141,5 +173,55 @@ namespace wsahRecieveDelivary.DTOs
         public int TotalReceivedQty { get; set; }
         public int TotalDeliveredQty { get; set; }
         public int CurrentBalance { get; set; }
+    }
+
+
+    // ==========================================
+    // USER TRANSACTION SUMMARY DTO
+    // ==========================================
+    // ==========================================
+    // UNIVERSAL USER TRANSACTION SUMMARY DTO
+    // ==========================================
+    public class UserTransactionSummaryDto
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public int? TotalDays { get; set; }
+
+        public int TotalTransactions { get; set; }
+        public int TotalReceiveCount { get; set; }
+        public int TotalDeliveryCount { get; set; }
+        public int TotalReceivedQty { get; set; }
+        public int TotalDeliveredQty { get; set; }
+        public int NetBalance { get; set; }
+
+        // ✅ SIMPLIFIED: Stage summary WITHOUT work order details
+        public Dictionary<string, ProcessBalanceDto> StageWiseSummary { get; set; } = new();
+
+        // ✅ NEW: Optional detailed stage breakdown WITH work orders
+        public Dictionary<int, StageWiseDetailedDto>? StageWiseDetailed { get; set; }
+
+        public List<DayWiseTransactionDto>? DayWiseBreakdown { get; set; }
+
+        public PaginatedResponseDto<WashTransactionResponseDto> Transactions { get; set; } = new();
+    }
+
+    // ==========================================
+    // DAY-WISE TRANSACTION DTO
+    // ==========================================
+    public class DayWiseTransactionDto
+    {
+        public DateTime Date { get; set; }
+        public string DateString => Date.ToString("yyyy-MM-dd (dddd)");
+
+        public int DayReceiveCount { get; set; }
+        public int DayDeliveryCount { get; set; }
+        public int DayReceivedQty { get; set; }
+        public int DayDeliveredQty { get; set; }
+
+        public List<WashTransactionResponseDto> Transactions { get; set; } = new();
     }
 }

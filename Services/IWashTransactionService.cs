@@ -43,5 +43,10 @@ namespace wsahRecieveDelivary.Services
             int? transactionTypeId = null,
             DateTime? startDate = null,
             DateTime? endDate = null);
+
+        // User-wise transactions with summary 
+        Task<UserTransactionSummaryDto> GetUserTransactionsSummaryAsync(
+            int userId,
+            TransactionPaginationRequestDto request);
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// D:\test c#\wsahRecieveDelivary\Controllers\WashTransactionController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Formats.Asn1;
@@ -171,7 +172,7 @@ namespace wsahRecieveDelivary.Controllers
         }
 
         // ==========================================
-        // ✅ CHANGED: GET BY STAGE (int instead of enum)
+        // GET BY STAGE (int instead of enum)
         // ==========================================
         /// <summary>
         /// Get all transactions for a process stage
@@ -394,7 +395,7 @@ namespace wsahRecieveDelivary.Controllers
         }
 
         // ==========================================
-        // ✅ CHANGED: GET RECEIVES BY STAGE (int instead of enum)
+        // GET RECEIVES BY STAGE (int instead of enum)
         // ==========================================
         /// <summary>
         /// Get all receive transactions for a stage
@@ -422,7 +423,7 @@ namespace wsahRecieveDelivary.Controllers
         }
 
         // ==========================================
-        // ✅ CHANGED: GET DELIVERIES BY STAGE (int instead of enum)
+        // GET DELIVERIES BY STAGE (int instead of enum)
         // ==========================================
         /// <summary>
         /// Get all delivery transactions for a stage
@@ -448,7 +449,6 @@ namespace wsahRecieveDelivary.Controllers
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
-
 
         // ==========================================
         // GET PAGINATED WITH FAST SEARCH
@@ -496,11 +496,44 @@ namespace wsahRecieveDelivary.Controllers
         }
 
         // ==========================================
-        // EXPORT TO CSV
+        // ✅ NEW: GET USER TRANSACTIONS WITH SUMMARY
         // ==========================================
         /// <summary>
-        /// Export transactions to CSV file with filters
+        /// Get all transactions created by current user with pagination, search, and summary
+        /// Includes: Total counts, stage-wise summary, and paginated transaction list
         /// </summary>
+        [HttpGet("user/summary")]
+        [ProducesResponseType(typeof(UserTransactionSummaryDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> GetUserTransactionsSummary(
+    [FromQuery] TransactionPaginationRequestDto request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                if (userId == 0)
+                    return Unauthorized(new { success = false, message = "User not authenticated" });
+
+                var result = await _service.GetUserTransactionsSummaryAsync(userId, request);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = result
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
         // ==========================================
         // EXPORT TO CSV
         // ==========================================
@@ -512,7 +545,7 @@ namespace wsahRecieveDelivary.Controllers
             [FromQuery] string? searchTerm = null,
             [FromQuery] string? buyer = null,
             [FromQuery] string? factory = null,
-            [FromQuery] string? unit = null, // ✅ ADDED
+            [FromQuery] string? unit = null,
             [FromQuery] int? processStageId = null,
             [FromQuery] int? transactionTypeId = null,
             [FromQuery] DateTime? startDate = null,
@@ -524,18 +557,17 @@ namespace wsahRecieveDelivary.Controllers
                 Console.WriteLine($"   SearchTerm: {searchTerm}");
                 Console.WriteLine($"   Buyer: {buyer}");
                 Console.WriteLine($"   Factory: {factory}");
-                Console.WriteLine($"   Unit: {unit}"); // ✅ ADDED
+                Console.WriteLine($"   Unit: {unit}");
                 Console.WriteLine($"   ProcessStageId: {processStageId}");
                 Console.WriteLine($"   TransactionTypeId: {transactionTypeId}");
                 Console.WriteLine($"   StartDate: {startDate}");
                 Console.WriteLine($"   EndDate: {endDate}");
 
-                // ✅ UPDATED: Pass unit parameter
                 var csvBytes = await _service.ExportToCSVAsync(
                     searchTerm,
                     buyer,
                     factory,
-                    unit, // ✅ ADDED
+                    unit,
                     processStageId,
                     transactionTypeId,
                     startDate,

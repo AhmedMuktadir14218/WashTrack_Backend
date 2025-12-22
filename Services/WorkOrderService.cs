@@ -5,7 +5,8 @@ using System.Globalization;
 using wsahRecieveDelivary.Data;
 using wsahRecieveDelivary.DTOs;
 using wsahRecieveDelivary.Extensions;
-using wsahRecieveDelivary.Models; 
+using wsahRecieveDelivary.Models;
+
 namespace wsahRecieveDelivary.Services
 {
     public class WorkOrderService : IWorkOrderService
@@ -15,7 +16,6 @@ namespace wsahRecieveDelivary.Services
         public WorkOrderService(ApplicationDbContext context)
         {
             _context = context;
-            // Set EPPlus License Context
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
         }
 
@@ -24,7 +24,6 @@ namespace wsahRecieveDelivary.Services
         // ==========================================
         public async Task<WorkOrderResponseDto> CreateAsync(WorkOrderDto dto, int userId)
         {
-            // Check if WorkOrderNo already exists
             if (await _context.WorkOrders.AnyAsync(w => w.WorkOrderNo == dto.WorkOrderNo))
             {
                 throw new InvalidOperationException($"Work Order No '{dto.WorkOrderNo}' already exists");
@@ -61,7 +60,8 @@ namespace wsahRecieveDelivary.Services
             _context.WorkOrders.Add(workOrder);
             await _context.SaveChangesAsync();
 
-            return await GetByIdAsync(workOrder.Id) ?? throw new Exception("Failed to retrieve created work order");
+            return await GetByIdAsync(workOrder.Id)
+                ?? throw new Exception("Failed to retrieve created work order");
         }
 
         // ==========================================
@@ -75,7 +75,6 @@ namespace wsahRecieveDelivary.Services
                 throw new KeyNotFoundException($"Work Order with ID {id} not found");
             }
 
-            // Check if updating WorkOrderNo to existing one
             if (workOrder.WorkOrderNo != dto.WorkOrderNo &&
                 await _context.WorkOrders.AnyAsync(w => w.WorkOrderNo == dto.WorkOrderNo))
             {
@@ -109,7 +108,8 @@ namespace wsahRecieveDelivary.Services
 
             await _context.SaveChangesAsync();
 
-            return await GetByIdAsync(workOrder.Id) ?? throw new Exception("Failed to retrieve updated work order");
+            return await GetByIdAsync(workOrder.Id)
+                ?? throw new Exception("Failed to retrieve updated work order");
         }
 
         // ==========================================
@@ -119,9 +119,7 @@ namespace wsahRecieveDelivary.Services
         {
             var workOrder = await _context.WorkOrders.FindAsync(id);
             if (workOrder == null)
-            {
                 return false;
-            }
 
             _context.WorkOrders.Remove(workOrder);
             await _context.SaveChangesAsync();
@@ -129,129 +127,211 @@ namespace wsahRecieveDelivary.Services
         }
 
         // ==========================================
-        // GET BY ID
+        // GET BY ID (WITH STAGE BALANCES - SEPARATE QUERY)
         // ==========================================
         public async Task<WorkOrderResponseDto?> GetByIdAsync(int id)
         {
-            return await _context.WorkOrders
+            // Get work order with user info
+            var workOrder = await _context.WorkOrders
                 .Include(w => w.CreatedByUser)
                 .Include(w => w.UpdatedByUser)
-                .Where(w => w.Id == id)
-                .Select(w => new WorkOrderResponseDto
-                {
-                    Id = w.Id,
-                    Factory = w.Factory,
-                    Line = w.Line,
-                    Unit = w.Unit,
-                    Buyer = w.Buyer,
-                    BuyerDepartment = w.BuyerDepartment,
-                    StyleName = w.StyleName,
-                    FastReactNo = w.FastReactNo,
-                    Color = w.Color,
-                    WorkOrderNo = w.WorkOrderNo,
-                    WashType = w.WashType,
-                    OrderQuantity = w.OrderQuantity,
-                    CutQty = w.CutQty,
-                    TOD = w.TOD,
-                    SewingCompDate = w.SewingCompDate,
-                    FirstRCVDate = w.FirstRCVDate,
-                    WashApprovalDate = w.WashApprovalDate,
-                    WashTargetDate = w.WashTargetDate,
-                    TotalWashReceived = w.TotalWashReceived,
-                    TotalWashDelivery = w.TotalWashDelivery,
-                    WashBalance = w.WashBalance,
-                    FromReceived = w.FromReceived,
-                    Marks = w.Marks,
-                    CreatedAt = w.CreatedAt,
-                    UpdatedAt = w.UpdatedAt,
-                    CreatedByUsername = w.CreatedByUser.Username,
-                    UpdatedByUsername = w.UpdatedByUser != null ? w.UpdatedByUser.Username : null
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(w => w.Id == id);
+
+            if (workOrder == null)
+                return null;
+
+            // Get stage balances separately (since no navigation property in WorkOrder)
+            var stageBalances = await _context.ProcessStageBalances
+                .Include(psb => psb.ProcessStage)
+                .Where(psb => psb.WorkOrderId == id)
+                .OrderBy(psb => psb.ProcessStage.DisplayOrder)
+                .ToListAsync();
+
+            return MapToResponseDto(workOrder, stageBalances);
         }
 
         // ==========================================
-        // GET BY WORK ORDER NO
+        // GET BY WORK ORDER NO (WITH STAGE BALANCES)
         // ==========================================
         public async Task<WorkOrderResponseDto?> GetByWorkOrderNoAsync(string workOrderNo)
         {
-            return await _context.WorkOrders
+            var workOrder = await _context.WorkOrders
                 .Include(w => w.CreatedByUser)
                 .Include(w => w.UpdatedByUser)
-                .Where(w => w.WorkOrderNo == workOrderNo)
-                .Select(w => new WorkOrderResponseDto
-                {
-                    Id = w.Id,
-                    Factory = w.Factory,
-                    Line = w.Line,
-                    Unit = w.Unit,
-                    Buyer = w.Buyer,
-                    BuyerDepartment = w.BuyerDepartment,
-                    StyleName = w.StyleName,
-                    FastReactNo = w.FastReactNo,
-                    Color = w.Color,
-                    WorkOrderNo = w.WorkOrderNo,
-                    WashType = w.WashType,
-                    OrderQuantity = w.OrderQuantity,
-                    CutQty = w.CutQty,
-                    TOD = w.TOD,
-                    SewingCompDate = w.SewingCompDate,
-                    FirstRCVDate = w.FirstRCVDate,
-                    WashApprovalDate = w.WashApprovalDate,
-                    WashTargetDate = w.WashTargetDate,
-                    TotalWashReceived = w.TotalWashReceived,
-                    TotalWashDelivery = w.TotalWashDelivery,
-                    WashBalance = w.WashBalance,
-                    FromReceived = w.FromReceived,
-                    Marks = w.Marks,
-                    CreatedAt = w.CreatedAt,
-                    UpdatedAt = w.UpdatedAt,
-                    CreatedByUsername = w.CreatedByUser.Username,
-                    UpdatedByUsername = w.UpdatedByUser != null ? w.UpdatedByUser.Username : null
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(w => w.WorkOrderNo == workOrderNo);
+
+            if (workOrder == null)
+                return null;
+
+            // Get stage balances separately
+            var stageBalances = await _context.ProcessStageBalances
+                .Include(psb => psb.ProcessStage)
+                .Where(psb => psb.WorkOrderId == workOrder.Id)
+                .OrderBy(psb => psb.ProcessStage.DisplayOrder)
+                .ToListAsync();
+
+            return MapToResponseDto(workOrder, stageBalances);
         }
 
         // ==========================================
-        // GET ALL
+        // GET ALL (WITH STAGE BALANCES)
         // ==========================================
         public async Task<List<WorkOrderResponseDto>> GetAllAsync()
         {
-            return await _context.WorkOrders
+            // Get all work orders
+            var workOrders = await _context.WorkOrders
                 .Include(w => w.CreatedByUser)
                 .Include(w => w.UpdatedByUser)
                 .OrderByDescending(w => w.CreatedAt)
-                .Select(w => new WorkOrderResponseDto
-                {
-                    Id = w.Id,
-                    Factory = w.Factory,
-                    Line = w.Line,
-                    Unit = w.Unit,
-                    Buyer = w.Buyer,
-                    BuyerDepartment = w.BuyerDepartment,
-                    StyleName = w.StyleName,
-                    FastReactNo = w.FastReactNo,
-                    Color = w.Color,
-                    WorkOrderNo = w.WorkOrderNo,
-                    WashType = w.WashType,
-                    OrderQuantity = w.OrderQuantity,
-                    CutQty = w.CutQty,
-                    TOD = w.TOD,
-                    SewingCompDate = w.SewingCompDate,
-                    FirstRCVDate = w.FirstRCVDate,
-                    WashApprovalDate = w.WashApprovalDate,
-                    WashTargetDate = w.WashTargetDate,
-                    TotalWashReceived = w.TotalWashReceived,
-                    TotalWashDelivery = w.TotalWashDelivery,
-                    WashBalance = w.WashBalance,
-                    FromReceived = w.FromReceived,
-                    Marks = w.Marks,
-                    CreatedAt = w.CreatedAt,
-                    UpdatedAt = w.UpdatedAt,
-                    CreatedByUsername = w.CreatedByUser.Username,
-                    UpdatedByUsername = w.UpdatedByUser != null ? w.UpdatedByUser.Username : null
-                })
                 .ToListAsync();
+
+            if (!workOrders.Any())
+                return new List<WorkOrderResponseDto>();
+
+            // Get all work order IDs
+            var workOrderIds = workOrders.Select(w => w.Id).ToList();
+
+            // Get all stage balances for these work orders in one query
+            var allStageBalances = await _context.ProcessStageBalances
+                .Include(psb => psb.ProcessStage)
+                .Where(psb => workOrderIds.Contains(psb.WorkOrderId))
+                .OrderBy(psb => psb.ProcessStage.DisplayOrder)
+                .ToListAsync();
+
+            // Group balances by WorkOrderId for easy lookup
+            var balancesByWorkOrder = allStageBalances
+                .GroupBy(psb => psb.WorkOrderId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Map to DTOs
+            var result = new List<WorkOrderResponseDto>();
+            foreach (var wo in workOrders)
+            {
+                var stageBalances = balancesByWorkOrder.ContainsKey(wo.Id)
+                    ? balancesByWorkOrder[wo.Id]
+                    : new List<ProcessStageBalance>();
+
+                result.Add(MapToResponseDto(wo, stageBalances));
+            }
+
+            return result;
+        }
+
+        // ==========================================
+        // GET PAGINATED (WITH STAGE BALANCES)
+        // ==========================================
+        public async Task<PaginatedResponseDto<WorkOrderResponseDto>> GetPaginatedAsync(
+            PaginationRequestDto request)
+        {
+            try
+            {
+                // Build base query
+                var query = _context.WorkOrders
+                    .AsNoTracking()
+                    .Include(w => w.CreatedByUser)
+                    .Include(w => w.UpdatedByUser)
+                    .AsQueryable();
+
+                // Apply search
+                query = query.Search(request.SearchTerm);
+
+                // Apply filters
+                query = query.ApplyFilters(
+                    request.Factory,
+                    request.Buyer,
+                    request.WashType,
+                    request.Line,
+                    request.Unit,
+                    request.FromDate,
+                    request.ToDate
+                );
+
+                // Apply sorting
+                query = query.ApplySort(request.SortBy, request.SortOrder);
+
+                // Get total count
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+
+                // Apply pagination
+                var skip = (request.Page - 1) * request.PageSize;
+                var workOrders = await query
+                    .Skip(skip)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                if (!workOrders.Any())
+                {
+                    return new PaginatedResponseDto<WorkOrderResponseDto>
+                    {
+                        Success = true,
+                        Message = "No records found",
+                        Data = new List<WorkOrderResponseDto>(),
+                        Pagination = new PaginationMetadata
+                        {
+                            CurrentPage = request.Page,
+                            PageSize = request.PageSize,
+                            TotalRecords = 0,
+                            TotalPages = 0,
+                            HasPrevious = false,
+                            HasNext = false
+                        }
+                    };
+                }
+
+                // Get work order IDs for this page
+                var workOrderIds = workOrders.Select(w => w.Id).ToList();
+
+                // Get stage balances for these work orders
+                var allStageBalances = await _context.ProcessStageBalances
+                    .AsNoTracking()
+                    .Include(psb => psb.ProcessStage)
+                    .Where(psb => workOrderIds.Contains(psb.WorkOrderId))
+                    .OrderBy(psb => psb.ProcessStage.DisplayOrder)
+                    .ToListAsync();
+
+                // Group balances by WorkOrderId
+                var balancesByWorkOrder = allStageBalances
+                    .GroupBy(psb => psb.WorkOrderId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                // Map to DTOs
+                var data = new List<WorkOrderResponseDto>();
+                foreach (var wo in workOrders)
+                {
+                    var stageBalances = balancesByWorkOrder.ContainsKey(wo.Id)
+                        ? balancesByWorkOrder[wo.Id]
+                        : new List<ProcessStageBalance>();
+
+                    data.Add(MapToResponseDto(wo, stageBalances));
+                }
+
+                return new PaginatedResponseDto<WorkOrderResponseDto>
+                {
+                    Success = true,
+                    Message = null,
+                    Data = data,
+                    Pagination = new PaginationMetadata
+                    {
+                        CurrentPage = request.Page,
+                        PageSize = request.PageSize,
+                        TotalRecords = totalCount,
+                        TotalPages = totalPages,
+                        HasPrevious = request.Page > 1,
+                        HasNext = request.Page < totalPages
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new PaginatedResponseDto<WorkOrderResponseDto>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = new List<WorkOrderResponseDto>(),
+                    Pagination = new PaginationMetadata()
+                };
+            }
         }
 
         // ==========================================
@@ -288,15 +368,13 @@ namespace wsahRecieveDelivary.Services
                     return response;
                 }
 
-                // Calculate actual data rows (skip empty rows)
+                // Count actual data rows
                 int actualDataRows = 0;
                 for (int row = 2; row <= rowCount; row++)
                 {
                     var workOrderNo = worksheet.Cells[row, 9].Value?.ToString()?.Trim();
                     if (!string.IsNullOrEmpty(workOrderNo))
-                    {
                         actualDataRows++;
-                    }
                 }
 
                 response.TotalRecords = actualDataRows;
@@ -305,22 +383,17 @@ namespace wsahRecieveDelivary.Services
                 {
                     try
                     {
-                        // Read Work Order No
                         var workOrderNo = worksheet.Cells[row, 9].Value?.ToString()?.Trim();
 
-                        // Skip empty rows
                         if (string.IsNullOrEmpty(workOrderNo))
-                        {
-                            continue; // Don't count as failed
-                        }
+                            continue;
 
-                        // Check if WorkOrder already exists
                         var existingWorkOrder = await _context.WorkOrders
                             .FirstOrDefaultAsync(w => w.WorkOrderNo == workOrderNo);
 
                         var workOrder = existingWorkOrder ?? new WorkOrder();
 
-                        // Map Excel columns to WorkOrder properties
+                        // Map Excel columns
                         workOrder.Factory = worksheet.Cells[row, 1].Value?.ToString()?.Trim() ?? "";
                         workOrder.Line = worksheet.Cells[row, 2].Value?.ToString()?.Trim() ?? "";
                         workOrder.Unit = worksheet.Cells[row, 3].Value?.ToString()?.Trim() ?? "";
@@ -347,44 +420,36 @@ namespace wsahRecieveDelivary.Services
                         workOrder.TotalWashReceived = ParseInt(worksheet.Cells[row, 18].Value?.ToString());
                         workOrder.TotalWashDelivery = ParseInt(worksheet.Cells[row, 19].Value?.ToString());
 
-                        // ✅ UPDATED: Column 20 might contain "Wash Balance" or combined data
-                        // Try to parse it, if fails, calculate from Received - Delivery
                         var washBalanceStr = worksheet.Cells[row, 20].Value?.ToString()?.Trim();
                         workOrder.WashBalance = ParseInt(washBalanceStr);
 
-                        // If WashBalance is 0 and we have data, calculate it
-                        if (workOrder.WashBalance == 0 && (workOrder.TotalWashReceived > 0 || workOrder.TotalWashDelivery > 0))
+                        if (workOrder.WashBalance == 0 &&
+                            (workOrder.TotalWashReceived > 0 || workOrder.TotalWashDelivery > 0))
                         {
                             workOrder.WashBalance = workOrder.TotalWashReceived - workOrder.TotalWashDelivery;
                         }
 
-                        // ✅ UPDATED: FromReceived and Marks might be in column 20 or 21
-                        // Check if column 21 has data
                         var col21Value = worksheet.Cells[row, 21].Value?.ToString()?.Trim();
-
-                        // If column 21 looks like a number, it's FromReceived
-                        if (!string.IsNullOrEmpty(col21Value) && int.TryParse(col21Value.Replace(",", ""), out _))
+                        if (!string.IsNullOrEmpty(col21Value) &&
+                            int.TryParse(col21Value.Replace(",", ""), out _))
                         {
                             workOrder.FromReceived = ParseInt(col21Value);
                             workOrder.Marks = worksheet.Cells[row, 22].Value?.ToString()?.Trim();
                         }
                         else
                         {
-                            // Column 21 is Marks
                             workOrder.FromReceived = 0;
                             workOrder.Marks = col21Value;
                         }
 
                         if (existingWorkOrder != null)
                         {
-                            // Update existing record
                             workOrder.UpdatedBy = userId;
                             workOrder.UpdatedAt = DateTime.UtcNow;
                             response.UpdatedCount++;
                         }
                         else
                         {
-                            // Create new record
                             workOrder.CreatedBy = userId;
                             workOrder.CreatedAt = DateTime.UtcNow;
                             _context.WorkOrders.Add(workOrder);
@@ -394,7 +459,7 @@ namespace wsahRecieveDelivary.Services
                     catch (Exception ex)
                     {
                         var workOrderNo = worksheet.Cells[row, 9].Value?.ToString()?.Trim();
-                        if (!string.IsNullOrEmpty(workOrderNo)) // Only log error if row has Work Order No
+                        if (!string.IsNullOrEmpty(workOrderNo))
                         {
                             response.FailedCount++;
                             response.Errors.Add($"Row {row} (WO: {workOrderNo}): {ex.Message}");
@@ -416,155 +481,115 @@ namespace wsahRecieveDelivary.Services
             return response;
         }
 
-
-
         // ==========================================
-        // GET PAGINATED WITH FAST SEARCH
+        // PRIVATE: MAP TO RESPONSE DTO
         // ==========================================
-        public async Task<PaginatedResponseDto<WorkOrderResponseDto>> GetPaginatedAsync(
-            PaginationRequestDto request)
+        private WorkOrderResponseDto MapToResponseDto(WorkOrder w, List<ProcessStageBalance> stageBalances)
         {
-            try
+            // Build stage balances list
+            var stageBalanceDtos = new List<StageBalanceDto>();
+
+            if (stageBalances != null && stageBalances.Any())
             {
-                // Build query with AsNoTracking for read-only performance
-                var query = _context.WorkOrders
-                    .AsNoTracking() // ← 40-50% faster!
-                    .Include(w => w.CreatedByUser)
-                    .Include(w => w.UpdatedByUser)
-                    .AsQueryable();
-
-                // Apply global search
-                query = query.Search(request.SearchTerm);
-
-                // Apply advanced filters
-                query = query.ApplyFilters(
-                    request.Factory,
-                    request.Buyer,
-                    request.WashType,
-                    request.Line,
-                    request.Unit,
-                    request.FromDate,
-                    request.ToDate
-                );
-
-                // Apply sorting
-                query = query.ApplySort(request.SortBy, request.SortOrder);
-
-                // Get total count BEFORE pagination (optimized)
-                var totalCount = await query.CountAsync();
-
-                // Calculate total pages
-                var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
-
-                // Apply pagination
-                var skip = (request.Page - 1) * request.PageSize;
-                var data = await query
-                    .Skip(skip)
-                    .Take(request.PageSize)
-                    .Select(w => new WorkOrderResponseDto
+                stageBalanceDtos = stageBalances
+                    .Where(psb => psb.ProcessStage != null && psb.ProcessStage.IsActive)
+                    .OrderBy(psb => psb.ProcessStage.DisplayOrder)
+                    .Select(psb => new StageBalanceDto
                     {
-                        Id = w.Id,
-                        Factory = w.Factory,
-                        Line = w.Line,
-                        Unit = w.Unit,
-                        Buyer = w.Buyer,
-                        BuyerDepartment = w.BuyerDepartment,
-                        StyleName = w.StyleName,
-                        FastReactNo = w.FastReactNo,
-                        Color = w.Color,
-                        WorkOrderNo = w.WorkOrderNo,
-                        WashType = w.WashType,
-                        OrderQuantity = w.OrderQuantity,
-                        CutQty = w.CutQty,
-                        TOD = w.TOD,
-                        SewingCompDate = w.SewingCompDate,
-                        FirstRCVDate = w.FirstRCVDate,
-                        WashApprovalDate = w.WashApprovalDate,
-                        WashTargetDate = w.WashTargetDate,
-                        TotalWashReceived = w.TotalWashReceived,
-                        TotalWashDelivery = w.TotalWashDelivery,
-                        WashBalance = w.WashBalance,
-                        FromReceived = w.FromReceived,
-                        Marks = w.Marks,
-                        CreatedAt = w.CreatedAt,
-                        UpdatedAt = w.UpdatedAt,
-                        CreatedByUsername = w.CreatedByUser.Username,
-                        UpdatedByUsername = w.UpdatedByUser != null ? w.UpdatedByUser.Username : null
+                        ProcessStageId = psb.ProcessStageId,
+                        ProcessStageName = psb.ProcessStage.Name,
+                        DisplayOrder = psb.ProcessStage.DisplayOrder,
+                        TotalReceived = psb.TotalReceived,
+                        TotalDelivered = psb.TotalDelivered,
+                        CurrentBalance = psb.CurrentBalance,
+                        LastReceiveDate = psb.LastReceiveDate,
+                        LastDeliveryDate = psb.LastDeliveryDate
                     })
-                    .ToListAsync();
+                    .ToList();
+            }
 
-                return new PaginatedResponseDto<WorkOrderResponseDto>
-                {
-                    Success = true,
-                    Message = totalCount == 0 ? "No records found" : null,
-                    Data = data,
-                    Pagination = new PaginationMetadata
-                    {
-                        CurrentPage = request.Page,
-                        PageSize = request.PageSize,
-                        TotalRecords = totalCount,
-                        TotalPages = totalPages,
-                        HasPrevious = request.Page > 1,
-                        HasNext = request.Page < totalPages
-                    }
-                };
-            }
-            catch (Exception ex)
+            // Calculate totals from stage balances
+            var totalStageReceived = stageBalanceDtos.Sum(s => s.TotalReceived);
+            var totalStageDelivered = stageBalanceDtos.Sum(s => s.TotalDelivered);
+            var totalStageBalance = stageBalanceDtos.Sum(s => s.CurrentBalance);
+
+            // Calculate progress percentage
+            decimal progressPercentage = 0;
+            if (w.OrderQuantity > 0)
             {
-                return new PaginatedResponseDto<WorkOrderResponseDto>
-                {
-                    Success = false,
-                    Message = $"Error retrieving work orders: {ex.Message}",
-                    Data = new List<WorkOrderResponseDto>(),
-                    Pagination = new PaginationMetadata()
-                };
+                progressPercentage = Math.Round((decimal)totalStageDelivered / w.OrderQuantity * 100, 2);
+                // Cap at 100%
+                if (progressPercentage > 100)
+                    progressPercentage = 100;
             }
+
+            return new WorkOrderResponseDto
+            {
+                Id = w.Id,
+                Factory = w.Factory,
+                Line = w.Line,
+                Unit = w.Unit,
+                Buyer = w.Buyer,
+                BuyerDepartment = w.BuyerDepartment,
+                StyleName = w.StyleName,
+                FastReactNo = w.FastReactNo,
+                Color = w.Color,
+                WorkOrderNo = w.WorkOrderNo,
+                WashType = w.WashType,
+                OrderQuantity = w.OrderQuantity,
+                CutQty = w.CutQty,
+                TOD = w.TOD,
+                SewingCompDate = w.SewingCompDate,
+                FirstRCVDate = w.FirstRCVDate,
+                WashApprovalDate = w.WashApprovalDate,
+                WashTargetDate = w.WashTargetDate,
+                TotalWashReceived = w.TotalWashReceived,
+                TotalWashDelivery = w.TotalWashDelivery,
+                WashBalance = w.WashBalance,
+                FromReceived = w.FromReceived,
+                Marks = w.Marks,
+                CreatedAt = w.CreatedAt,
+                UpdatedAt = w.UpdatedAt,
+                CreatedByUsername = w.CreatedByUser?.Username ?? "",
+                UpdatedByUsername = w.UpdatedByUser?.Username,
+
+                // Stage balances
+                StageBalances = stageBalanceDtos,
+                TotalStageReceived = totalStageReceived,
+                TotalStageDelivered = totalStageDelivered,
+                TotalStageBalance = totalStageBalance,
+                ProgressPercentage = progressPercentage
+            };
         }
 
-
         // ==========================================
-        // HELPER METHODS
+        // PRIVATE: HELPER METHODS
         // ==========================================
-
-        // Parse integer with comma removal
         private int ParseInt(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return 0;
 
-            // Remove commas and spaces
             value = value.Replace(",", "").Replace(" ", "").Trim();
-
-            if (int.TryParse(value, out int result))
-                return result;
-
-            return 0;
+            return int.TryParse(value, out int result) ? result : 0;
         }
 
-        // Parse date from various formats
         private DateTime? ParseDate(object? value)
         {
             if (value == null)
                 return null;
 
-            // If already DateTime
             if (value is DateTime dateTime)
                 return dateTime;
 
-            // Try parse string
             string? dateString = value.ToString()?.Trim();
             if (string.IsNullOrWhiteSpace(dateString))
                 return null;
 
-            // Try common date formats
             string[] formats =
             {
-                "dd-MMM-yy",      // 30-Oct-25
-                "dd-MMM-yyyy",    // 30-Oct-2025
-                "dd/MM/yyyy",     // 30/10/2025
-                "yyyy-MM-dd",     // 2025-10-30
-                "dd-MM-yyyy",     // 30-10-2025
-                "MM/dd/yyyy"      // 10/30/2025
+                "dd-MMM-yy", "dd-MMM-yyyy", "dd/MM/yyyy",
+                "yyyy-MM-dd", "dd-MM-yyyy", "MM/dd/yyyy"
             };
 
             if (DateTime.TryParseExact(dateString, formats,
@@ -575,13 +600,7 @@ namespace wsahRecieveDelivary.Services
                 return parsedDate;
             }
 
-            // Try general parse
-            if (DateTime.TryParse(dateString, out DateTime generalDate))
-            {
-                return generalDate;
-            }
-
-            return null;
+            return DateTime.TryParse(dateString, out DateTime generalDate) ? generalDate : null;
         }
     }
 }

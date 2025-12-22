@@ -188,7 +188,7 @@ namespace wsahRecieveDelivary.Services
 
 
 
-       
+
         // ==========================================
         // DELETE (SOFT DELETE)
         // ==========================================
@@ -984,6 +984,293 @@ namespace wsahRecieveDelivary.Services
             }
         }
 
+
+
+        // ==========================================
+        // GET USER TRANSACTIONS SUMMARY (UNIFIED)
+        // ==========================================
+        public async Task<UserTransactionSummaryDto> GetUserTransactionsSummaryAsync(
+            int userId,
+            TransactionPaginationRequestDto request)
+        {
+            try
+            {
+                Console.WriteLine($"👤 GetUserTransactionsSummaryAsync called");
+                Console.WriteLine($"   UserId: {userId}");
+                Console.WriteLine($"   Page: {request.Page}, PageSize: {request.PageSize}");
+                Console.WriteLine($"   StartDate: {request.StartDate}");
+                Console.WriteLine($"   EndDate: {request.EndDate}");
+                Console.WriteLine($"   IncludeDayWiseBreakdown: {request.IncludeDayWiseBreakdown}");
+
+                // ✅ Get user
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    throw new KeyNotFoundException($"User with ID {userId} not found");
+
+                // ✅ Build base query
+                var baseQuery = _context.WashTransactions
+                    .AsNoTracking()
+                    .Include(t => t.WorkOrder)
+                    .Include(t => t.ProcessStage)
+                    .Include(t => t.CreatedByUser)
+                    .Include(t => t.UpdatedByUser)
+                    .Where(t => t.CreatedBy == userId && t.IsActive)
+                    .AsQueryable();
+
+                // ✅ Apply date filter if provided
+                if (request.StartDate.HasValue)
+                {
+                    Console.WriteLine($"   Applying StartDate filter: {request.StartDate:yyyy-MM-dd}");
+                    baseQuery = baseQuery.Where(t => t.TransactionDate.Date >= request.StartDate.Value.Date);
+                }
+
+                if (request.EndDate.HasValue)
+                {
+                    Console.WriteLine($"   Applying EndDate filter: {request.EndDate:yyyy-MM-dd}");
+                    baseQuery = baseQuery.Where(t => t.TransactionDate.Date <= request.EndDate.Value.Date);
+                }
+
+                // ✅ Apply search
+                if (!string.IsNullOrEmpty(request.SearchTerm))
+                {
+                    Console.WriteLine($"🔍 Applying search: {request.SearchTerm}");
+                    baseQuery = baseQuery.SearchTransaction(request.SearchTerm);
+                }
+
+                // ✅ Apply other filters
+                if (!string.IsNullOrEmpty(request.Buyer) ||
+                    !string.IsNullOrEmpty(request.Factory) ||
+                    !string.IsNullOrEmpty(request.Unit) ||
+                    request.ProcessStageId.HasValue ||
+                    request.TransactionTypeId.HasValue)
+                {
+                    Console.WriteLine("🎛️ Applying filters...");
+
+                    if (!string.IsNullOrEmpty(request.Buyer))
+                        baseQuery = baseQuery.Where(t =>
+                            t.WorkOrder.Buyer.ToLower().Contains(request.Buyer.ToLower()));
+
+                    if (!string.IsNullOrEmpty(request.Factory))
+                        baseQuery = baseQuery.Where(t =>
+                            t.WorkOrder.Factory.ToLower() == request.Factory.ToLower());
+
+                    if (!string.IsNullOrEmpty(request.Unit))
+                        baseQuery = baseQuery.Where(t =>
+                            t.WorkOrder.Unit.ToLower() == request.Unit.ToLower());
+
+                    if (request.ProcessStageId.HasValue)
+                        baseQuery = baseQuery.Where(t =>
+                            t.ProcessStageId == request.ProcessStageId.Value);
+
+                    if (request.TransactionTypeId.HasValue)
+                        baseQuery = baseQuery.Where(t =>
+                            (int)t.TransactionType == request.TransactionTypeId.Value);
+                }
+
+                // ✅ Get all filtered transactions for summary
+                var allTransactions = await baseQuery.ToListAsync();
+                var totalCount = allTransactions.Count;
+
+                Console.WriteLine($"📊 Total transactions: {totalCount}");
+
+                // ✅ Calculate summary
+                var totalReceiveCount = allTransactions.Count(t => t.TransactionType == TransactionType.Receive);
+                var totalDeliveryCount = allTransactions.Count(t => t.TransactionType == TransactionType.Delivery);
+                var totalReceivedQty = allTransactions
+                    .Where(t => t.TransactionType == TransactionType.Receive)
+                    .Sum(t => t.Quantity);
+                var totalDeliveredQty = allTransactions
+                    .Where(t => t.TransactionType == TransactionType.Delivery)
+                    .Sum(t => t.Quantity);
+
+                Console.WriteLine($"📈 Summary - Receives: {totalReceiveCount}, Deliveries: {totalDeliveryCount}");
+
+                // ✅ Stage-wise summary
+                var stageWiseSummary = new Dictionary<string, ProcessBalanceDto>();
+                var stages = allTransactions.GroupBy(t => t.ProcessStageId).Select(g => g.Key).Distinct().ToList();
+
+                foreach (var stageId in stages)
+                {
+                    var stageTransactions = allTransactions.Where(t => t.ProcessStageId == stageId).ToList();
+                    if (stageTransactions.Count > 0)
+                    {
+                        var stage = await _context.ProcessStages.FindAsync(stageId);
+                        var workOrderId = stageTransactions.First().WorkOrderId;
+                        var workOrder = await _context.WorkOrders.FindAsync(workOrderId);
+
+                        var balanceDto = new ProcessBalanceDto
+                        {
+                            WorkOrderId = workOrderId,
+                            WorkOrderNo = workOrder?.WorkOrderNo ?? "-",
+                            StyleName = workOrder?.StyleName ?? "-",
+                            ProcessStageId = stageId,
+                            ProcessStageName = stage?.Name ?? "-",
+                            TotalReceived = stageTransactions
+                                .Where(t => t.TransactionType == TransactionType.Receive)
+                                .Sum(t => t.Quantity),
+                            TotalDelivered = stageTransactions
+                                .Where(t => t.TransactionType == TransactionType.Delivery)
+                                .Sum(t => t.Quantity),
+                            CurrentBalance = stageTransactions
+                                .Where(t => t.TransactionType == TransactionType.Receive)
+                                .Sum(t => t.Quantity) -
+                            stageTransactions
+                                .Where(t => t.TransactionType == TransactionType.Delivery)
+                                .Sum(t => t.Quantity),
+                            LastReceiveDate = stageTransactions
+                                .Where(t => t.TransactionType == TransactionType.Receive)
+                                .OrderByDescending(t => t.TransactionDate)
+                                .Select(t => (DateTime?)t.TransactionDate)
+                                .FirstOrDefault(),
+                            LastDeliveryDate = stageTransactions
+                                .Where(t => t.TransactionType == TransactionType.Delivery)
+                                .OrderByDescending(t => t.TransactionDate)
+                                .Select(t => (DateTime?)t.TransactionDate)
+                                .FirstOrDefault()
+                        };
+                        stageWiseSummary[stage?.Name ?? $"Stage {stageId}"] = balanceDto;
+                    }
+                }
+
+                // ✅ Day-wise breakdown (only if requested and date range provided)
+                List<DayWiseTransactionDto>? dayWiseBreakdown = null;
+                if (request.IncludeDayWiseBreakdown && request.StartDate.HasValue && request.EndDate.HasValue)
+                {
+                    Console.WriteLine("📅 Generating day-wise breakdown...");
+                    dayWiseBreakdown = new List<DayWiseTransactionDto>();
+                    var currentDate = request.StartDate.Value.Date;
+
+                    while (currentDate <= request.EndDate.Value.Date)
+                    {
+                        var dayTransactions = allTransactions
+                            .Where(t => t.TransactionDate.Date == currentDate)
+                            .ToList();
+
+                        if (dayTransactions.Count > 0)
+                        {
+                            dayWiseBreakdown.Add(new DayWiseTransactionDto
+                            {
+                                Date = currentDate,
+                                DayReceiveCount = dayTransactions.Count(t => t.TransactionType == TransactionType.Receive),
+                                DayDeliveryCount = dayTransactions.Count(t => t.TransactionType == TransactionType.Delivery),
+                                DayReceivedQty = dayTransactions
+                                    .Where(t => t.TransactionType == TransactionType.Receive)
+                                    .Sum(t => t.Quantity),
+                                DayDeliveredQty = dayTransactions
+                                    .Where(t => t.TransactionType == TransactionType.Delivery)
+                                    .Sum(t => t.Quantity),
+                                Transactions = dayTransactions.Select(t => new WashTransactionResponseDto
+                                {
+                                    Id = t.Id,
+                                    WorkOrderId = t.WorkOrderId,
+                                    WorkOrderNo = t.WorkOrder.WorkOrderNo,
+                                    StyleName = t.WorkOrder.StyleName,
+                                    Buyer = t.WorkOrder.Buyer,
+                                    Factory = t.WorkOrder.Factory,
+                                    Line = t.WorkOrder.Line,
+                                    TransactionType = t.TransactionType,
+                                    TransactionTypeName = t.TransactionType.ToString(),
+                                    ProcessStageId = t.ProcessStageId,
+                                    ProcessStageName = t.ProcessStage.Name,
+                                    Quantity = t.Quantity,
+                                    TransactionDate = t.TransactionDate,
+                                    BatchNo = t.BatchNo,
+                                    GatePassNo = t.GatePassNo,
+                                    Remarks = t.Remarks,
+                                    ReceivedBy = t.ReceivedBy,
+                                    DeliveredTo = t.DeliveredTo,
+                                    CreatedBy = t.CreatedBy,
+                                    CreatedByUsername = t.CreatedByUser.Username,
+                                    CreatedAt = t.CreatedAt,
+                                    UpdatedByUsername = t.UpdatedByUser?.Username,
+                                    UpdatedAt = t.UpdatedAt
+                                }).ToList()
+                            });
+                        }
+                        currentDate = currentDate.AddDays(1);
+                    }
+                    Console.WriteLine($"   Day-wise breakdown: {dayWiseBreakdown.Count} days with data");
+                }
+
+                // ✅ Apply sorting and pagination
+                var sortedQuery = baseQuery.ApplyTransactionSort(request.SortBy, request.SortOrder);
+                var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+                var skip = (request.Page - 1) * request.PageSize;
+
+                var paginatedData = await sortedQuery
+                    .Skip(skip)
+                    .Take(request.PageSize)
+                    .Select(t => new WashTransactionResponseDto
+                    {
+                        Id = t.Id,
+                        WorkOrderId = t.WorkOrderId,
+                        WorkOrderNo = t.WorkOrder.WorkOrderNo,
+                        StyleName = t.WorkOrder.StyleName,
+                        Buyer = t.WorkOrder.Buyer,
+                        Factory = t.WorkOrder.Factory,
+                        Line = t.WorkOrder.Line,
+                        TransactionType = t.TransactionType,
+                        TransactionTypeName = t.TransactionType.ToString(),
+                        ProcessStageId = t.ProcessStageId,
+                        ProcessStageName = t.ProcessStage.Name,
+                        Quantity = t.Quantity,
+                        TransactionDate = t.TransactionDate,
+                        BatchNo = t.BatchNo,
+                        GatePassNo = t.GatePassNo,
+                        Remarks = t.Remarks,
+                        ReceivedBy = t.ReceivedBy,
+                        DeliveredTo = t.DeliveredTo,
+                        CreatedBy = t.CreatedBy,
+                        CreatedByUsername = t.CreatedByUser.Username,
+                        CreatedAt = t.CreatedAt,
+                        UpdatedByUsername = t.UpdatedByUser != null ? t.UpdatedByUser.Username : null,
+                        UpdatedAt = t.UpdatedAt
+                    })
+                    .ToListAsync();
+
+                Console.WriteLine($"✅ Page {request.Page}: {paginatedData.Count} transactions");
+
+                // ✅ Build response
+                return new UserTransactionSummaryDto
+                {
+                    UserId = userId,
+                    Username = user.Username,
+                    StartDate = request.StartDate,
+                    EndDate = request.EndDate,
+                    TotalDays = request.StartDate.HasValue && request.EndDate.HasValue
+                        ? (int)(request.EndDate.Value.Date - request.StartDate.Value.Date).TotalDays + 1
+                        : null,
+                    TotalTransactions = totalCount,
+                    TotalReceiveCount = totalReceiveCount,
+                    TotalDeliveryCount = totalDeliveryCount,
+                    TotalReceivedQty = totalReceivedQty,
+                    TotalDeliveredQty = totalDeliveredQty,
+                    NetBalance = totalReceivedQty - totalDeliveredQty,
+                    StageWiseSummary = stageWiseSummary,
+                    DayWiseBreakdown = dayWiseBreakdown,
+                    Transactions = new PaginatedResponseDto<WashTransactionResponseDto>
+                    {
+                        Success = true,
+                        Message = totalCount == 0 ? "No transactions found" : null,
+                        Data = paginatedData,
+                        Pagination = new PaginationMetadata
+                        {
+                            CurrentPage = request.Page,
+                            PageSize = request.PageSize,
+                            TotalRecords = totalCount,
+                            TotalPages = totalPages,
+                            HasPrevious = request.Page > 1,
+                            HasNext = request.Page < totalPages
+                        }
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                throw;
+            }
+        }
         // ==========================================
         // EXPORT TO CSV WITH DATE FILTER
         // ==========================================
@@ -1209,4 +1496,4 @@ namespace wsahRecieveDelivary.Services
             }
         }
     }
-} 
+}
