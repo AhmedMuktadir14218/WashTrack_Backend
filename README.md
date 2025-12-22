@@ -1,147 +1,254 @@
-# wsahRecieveDelivary API
+# WashTrack Backend
 
-This is the backend API for the wsahRecieveDelivary application, a system designed to manage wash transactions, work orders, and user roles. It provides a set of secure and well-documented endpoints for client applications to interact with.
+A robust, secure, and scalable backend API for managing **wash receiving, processing, and delivery operations**. This system is designed to handle work orders, wash transactions, process stages, and role-based user access with enterprise-grade architecture and best practices.
 
-## Features
+---
 
-*   **User Management:** Register, login, and manage user profiles.
-*   **Authentication & Authorization:** Secure endpoints using JWT (JSON Web Tokens). Role-based access control for different user levels.
-*   **Work Order Management:** Create, retrieve, update, and delete work orders.
-*   **Wash Transaction Management:** Track and manage wash transactions throughout their lifecycle.
-*   **Process Stage Management:** Define and manage different stages in the washing process.
-*   **Data Export:** Export data to CSV and Excel formats.
+## 🚀 Overview
 
-## Technologies Used
+The **wsahRecieveDelivary API** serves as the core backend for wash operation workflows. It enables organizations to efficiently track work orders, monitor item movement through multiple washing stages, manage user permissions, and export operational data for reporting and analysis.
 
-*   **.NET 8:** The latest version of the .NET framework for building high-performance, cross-platform applications.
-*   **ASP.NET Core:** For building the web API.
-*   **Entity Framework Core 8:** For data access and object-relational mapping (ORM).
-*   **SQL Server:** As the relational database.
-*   **JWT (JSON Web Tokens):** For stateless, secure authentication.
-*   **Swashbuckle (Swagger):** For API documentation and testing.
-*   **BCrypt.Net:** For hashing user passwords.
-*   **CsvHelper & EPPlus:** For working with CSV and Excel files.
+The API is built with **.NET 8** and follows a clean **N-Tier architecture**, ensuring maintainability, scalability, and long-term growth.
 
-## Architecture
+---
 
-This project follows a standard N-Tier architecture, which separates concerns into logical layers.
+## ✨ Key Features
 
-*   **Presentation Layer (Controllers):** This layer is responsible for handling all HTTP requests and responses. It serves as the entry point for the API, receiving requests and returning results to the client. The controllers are lightweight and delegate the business logic to the service layer.
+### 🔐 User & Role Management
 
-*   **Business Logic Layer (Services):** This layer contains the core business logic of the application. The services are responsible for processing data, performing calculations, and coordinating with the data access layer. They are injected into the controllers using dependency injection.
+* User registration and authentication
+* Role-based authorization (Admin, Operator, etc.)
+* Secure password hashing using BCrypt
 
-*   **Data Access Layer (Data):** This layer is responsible for all data-related operations. It uses Entity Framework Core to interact with the database. The `ApplicationDbContext` class is the main component of this layer, representing a session with the database.
+### 🛡 Authentication & Authorization
 
-*   **Domain Model (Models):** This layer contains the entity classes that represent the application's domain objects. These entities are mapped to the database tables.
+* JWT-based stateless authentication
+* Fine-grained permission control per process stage
+* Secure access to protected endpoints
 
-*   **Data Transfer Objects (DTOs):** DTOs are used to shape the data that is sent to and received from the API. They help to decouple the domain model from the presentation layer and prevent over-posting or under-posting of data.
+### 🧾 Work Order Management
 
-## Database Schema
+* Create, view, update, and delete work orders
+* Track ownership and update history
+* Associate work orders with wash transactions and process stages
 
-The database schema is designed to support the application's features. Here is an overview of the main entities and their relationships:
+### 🧼 Wash Transaction Tracking
 
-*   **User & Role:** There is a many-to-many relationship between `User` and `Role`, managed through the `UserRole` join table. A user can have multiple roles (e.g., Admin, User), and a role can be assigned to many users.
+* Record item movement across washing stages
+* Maintain a complete lifecycle history
+* Ensure accurate stage-wise accountability
 
-*   **User & ProcessStage:** A many-to-many relationship exists between `User` and `ProcessStage`, using the `UserProcessStageAccess` join table. This table also stores permissions (e.g., `CanView`, `CanEdit`) for each user on a specific process stage.
+### 🔄 Process Stage Management
 
-*   **WorkOrder:** Represents a work order in the system.
-    *   It has a one-to-many relationship with `User` (a user can create and update many work orders).
-    *   It has a one-to-many relationship with `WashTransaction` (a work order can have many wash transactions).
-    *   It has a one-to-many relationship with `ProcessStageBalance`.
+* Define customizable wash stages (e.g., Received, Washing, Delivered)
+* Assign user permissions per stage
+* Maintain real-time stage balances
 
-*   **WashTransaction:** Records the movement of items through different washing stages.
-    *   It has a one-to-many relationship with `User` (a user can create and update many transactions).
-    *   It belongs to one `WorkOrder`.
-    *   It belongs to one `ProcessStage`.
+### 📤 Data Export
 
-*   **ProcessStage:** Represents a stage in the washing process (e.g., "Received", "Washing", "Delivered").
-    *   It has a one-to-many relationship with `WashTransaction`.
-    *   It has a one-to-many relationship with `ProcessStageBalance`.
+* Export reports to **CSV** and **Excel** formats
+* Ideal for auditing, reporting, and analytics
 
-*   **ProcessStageBalance:** This table stores the balance of items for a specific `WorkOrder` at a given `ProcessStage`. It acts as a summary table to provide quick access to the current state of a work order.
+---
 
-This schema allows for a flexible and robust system for tracking work orders and wash transactions.
+## 🧰 Technology Stack
 
-## Prerequisites
+| Category         | Technology              |
+| ---------------- | ----------------------- |
+| Framework        | .NET 8                  |
+| API              | ASP.NET Core Web API    |
+| ORM              | Entity Framework Core 8 |
+| Database         | SQL Server              |
+| Authentication   | JWT (JSON Web Tokens)   |
+| API Docs         | Swagger (Swashbuckle)   |
+| Security         | BCrypt.Net              |
+| Export Utilities | CsvHelper, EPPlus       |
 
-Before you begin, ensure you have the following installed:
+---
 
-*   [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-*   [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (or SQL Server Express)
-*   An IDE like [Visual Studio](https://visualstudio.microsoft.com/) or [VS Code](https://code.visualstudio.com/)
-*   [Git](https://git-scm.com/)
+## 🏗 Architecture
 
-## Getting Started
+The project follows a **clean N-Tier architecture**, separating responsibilities across well-defined layers:
 
-Follow these steps to get the project up and running on your local machine.
+### 1️⃣ Presentation Layer (Controllers)
 
-### 1. Clone the repository
+* Handles HTTP requests and responses
+* Exposes RESTful endpoints
+* Delegates all business logic to services
+
+### 2️⃣ Business Logic Layer (Services)
+
+* Contains core application logic
+* Enforces business rules and validations
+* Acts as a mediator between controllers and data access
+
+### 3️⃣ Data Access Layer (Data)
+
+* Manages database interactions using EF Core
+* Includes `ApplicationDbContext` as the database session
+* Ensures efficient querying and persistence
+
+### 4️⃣ Domain Model (Entities)
+
+* Represents core business objects
+* Maps directly to database tables
+
+### 5️⃣ Data Transfer Objects (DTOs)
+
+* Defines API request and response contracts
+* Prevents over-posting and tight coupling
+* Improves API security and clarity
+
+---
+
+## 🗄 Database Design
+
+The database schema is optimized for tracking wash operations and maintaining data integrity.
+
+### 🔗 Entity Relationships
+
+* **User ↔ Role**
+
+  * Many-to-many via `UserRole`
+
+* **User ↔ ProcessStage**
+
+  * Many-to-many via `UserProcessStageAccess`
+  * Includes permissions (`CanView`, `CanEdit`)
+
+* **WorkOrder**
+
+  * Created and updated by users
+  * Linked to multiple wash transactions
+  * Maintains stage-wise balances
+
+* **WashTransaction**
+
+  * Belongs to one work order and one process stage
+  * Tracks item movement history
+
+* **ProcessStage**
+
+  * Represents each step in the wash lifecycle
+  * Linked to transactions and balances
+
+* **ProcessStageBalance**
+
+  * Summary table showing item balance per stage
+  * Optimized for fast operational queries
+
+This structure ensures **traceability**, **performance**, and **data consistency**.
+
+---
+
+## ✅ Prerequisites
+
+Ensure the following tools are installed before setup:
+
+* .NET 8 SDK
+* SQL Server / SQL Server Express
+* Visual Studio or VS Code
+* Git
+
+---
+
+## ⚙️ Getting Started
+
+### 1️⃣ Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd wsahRecieveDelivary
 ```
 
-### 2. Configure the database
+### 2️⃣ Configure Database Connection
 
-1.  Open the `appsettings.json` file.
-2.  Modify the `DefaultConnection` connection string to point to your local SQL Server instance.
+Update `appsettings.json` with your SQL Server details:
 
-    ```json
-    "ConnectionStrings": {
-      "DefaultConnection": "Server=YOUR_SERVER_NAME;Database=wsahRD;User Id=YOUR_USER_ID;Password=YOUR_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=true"
-    }
-    ```
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Server=YOUR_SERVER;Database=wsahRD;User Id=USER;Password=PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=true"
+}
+```
 
-### 3. Apply database migrations
-
-Run the following command in your terminal to create the database and apply the migrations:
+### 3️⃣ Apply Migrations
 
 ```bash
 dotnet ef database update
 ```
 
-### 4. Run the application
-
-You can run the application from your IDE or using the .NET CLI:
+### 4️⃣ Run the Application
 
 ```bash
 dotnet run
 ```
 
-The API will be available at `http://localhost:5000` (or another port specified in `Properties/launchSettings.json`).
+The API will start at:
 
-## API Endpoints
+```
+http://localhost:5000
+```
 
-The API is documented using Swagger. Once the application is running, you can access the Swagger UI at `http://localhost:<port>/swagger` to view and test all available endpoints.
+(or the port defined in `launchSettings.json`)
 
-The main controllers are:
+---
 
-*   `AuthController`: Handles user registration and login.
-*   `UserController`: Manages user profiles and roles.
-*   `WorkOrderController`: Provides CRUD operations for work orders.
-*   `WashTransactionController`: Manages wash transactions.
-*   `ProcessStageController`: Manages the different process stages.
+## 📚 API Documentation
 
-## Configuration
+The API is fully documented using **Swagger**.
 
-The main configuration is done in the `appsettings.json` file.
+Access Swagger UI at:
 
-*   **`ConnectionStrings`**: Contains the database connection string.
-*   **`JwtSettings`**: Contains the settings for JWT generation, including the secret key, issuer, and audience.
+```
+http://localhost:<port>/swagger
+```
 
-For production environments, it is recommended to use user secrets or another secure method to store sensitive information like connection strings and JWT secrets.
+### Main Controllers
 
-## Usage
+* **AuthController** – Authentication & login
+* **UserController** – User and role management
+* **WorkOrderController** – Work order operations
+* **WashTransactionController** – Transaction lifecycle management
+* **ProcessStageController** – Wash stage configuration
 
-Once the API is running, you can use a tool like Postman or the built-in Swagger UI to make requests to the endpoints. Ensure you include the JWT token in the `Authorization` header for protected endpoints.
+---
 
-**Example Authorization Header:**
+## 🔑 Authentication Usage
+
+Protected endpoints require a JWT token in the request header:
 
 ```
 Authorization: Bearer <your-jwt-token>
 ```
 
-## License
+Tokens are issued upon successful login via the authentication endpoint.
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+---
+
+## 🔧 Configuration Notes
+
+* All core settings are managed via `appsettings.json`
+* JWT secrets and connection strings should be secured using:
+
+  * User Secrets (development)
+  * Environment variables (production)
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+
+See the `LICENSE.md` file for more details.
+
+---
+
+## 🤝 Contribution & Support
+
+Contributions, suggestions, and improvements are welcome.
+
+For issues or feature requests, please open a ticket in the repository.
+
+---
+
+**Built with scalability, security, and maintainability in mind.**
