@@ -12,8 +12,8 @@ using wsahRecieveDelivary.Data;
 namespace wsahRecieveDelivary.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251123035902_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260120095012_AddSyncTracking")]
+    partial class AddSyncTracking
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -199,6 +199,66 @@ namespace wsahRecieveDelivary.Migrations
                             Description = "Limited access based on stage",
                             Name = "User"
                         });
+                });
+
+            modelBuilder.Entity("wsahRecieveDelivary.Models.SyncLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("CreatedCount")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("time");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceApi")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("SyncEndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("SyncStartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SyncType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("TotalRecordsFetched")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SyncType");
+
+                    b.ToTable("SyncLogs");
                 });
 
             modelBuilder.Entity("wsahRecieveDelivary.Models.User", b =>
@@ -421,6 +481,13 @@ namespace wsahRecieveDelivary.Migrations
                     b.Property<int>("CutQty")
                         .HasColumnType("int");
 
+                    b.Property<string>("ExternalApiSource")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ExternalApiSyncDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Factory")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -456,6 +523,9 @@ namespace wsahRecieveDelivary.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("SyncedFromExternalApi")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("TOD")
                         .HasColumnType("datetime2");

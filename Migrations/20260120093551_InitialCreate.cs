@@ -47,6 +47,30 @@ namespace wsahRecieveDelivary.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "SyncLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SyncType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    SourceApi = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    TotalRecordsFetched = table.Column<int>(type: "int", nullable: false),
+                    CreatedCount = table.Column<int>(type: "int", nullable: false),
+                    UpdatedCount = table.Column<int>(type: "int", nullable: false),
+                    FailedCount = table.Column<int>(type: "int", nullable: false),
+                    Success = table.Column<bool>(type: "bit", nullable: false),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    SyncStartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SyncEndTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Duration = table.Column<TimeSpan>(type: "time", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SyncLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -153,7 +177,10 @@ namespace wsahRecieveDelivary.Migrations
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedBy = table.Column<int>(type: "int", nullable: false),
-                    UpdatedBy = table.Column<int>(type: "int", nullable: true)
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    SyncedFromExternalApi = table.Column<bool>(type: "bit", nullable: false),
+                    ExternalApiSyncDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ExternalApiSource = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -305,6 +332,16 @@ namespace wsahRecieveDelivary.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_SyncLogs_CreatedAt",
+                table: "SyncLogs",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SyncLogs_SyncType",
+                table: "SyncLogs",
+                column: "SyncType");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserProcessStageAccesses_ProcessStageId",
                 table: "UserProcessStageAccesses",
                 column: "ProcessStageId");
@@ -390,6 +427,9 @@ namespace wsahRecieveDelivary.Migrations
         {
             migrationBuilder.DropTable(
                 name: "ProcessStageBalances");
+
+            migrationBuilder.DropTable(
+                name: "SyncLogs");
 
             migrationBuilder.DropTable(
                 name: "UserProcessStageAccesses");

@@ -548,7 +548,8 @@ namespace wsahRecieveDelivary.Services
                 Factory = workOrder.Factory,
                 Line = workOrder.Line,
                 WashType = workOrder.WashType,
-                OrderQuantity = workOrder.OrderQuantity,
+                // ✅ FIX: Convert int? to int
+                OrderQuantity = workOrder.OrderQuantity.GetValueOrDefault(),
                 StageBalances = new Dictionary<string, ProcessBalanceDto>()
             };
 
@@ -575,9 +576,11 @@ namespace wsahRecieveDelivary.Services
             result.TotalDelivered = balances.Sum(b => b.TotalDelivered);
             result.OverallBalance = balances.Sum(b => b.CurrentBalance);
 
-            if (workOrder.OrderQuantity > 0)
+            // ✅ FIX: Safely handle nullable int for calculation
+            int orderQty = workOrder.OrderQuantity.GetValueOrDefault();
+            if (orderQty > 0)
             {
-                result.CompletionPercentage = Math.Round((decimal)result.TotalDelivered / workOrder.OrderQuantity * 100, 2);
+                result.CompletionPercentage = Math.Round((decimal)result.TotalDelivered / orderQty * 100, 2);
             }
 
             return result;
@@ -614,7 +617,8 @@ namespace wsahRecieveDelivary.Services
                     Factory = workOrder.Factory,
                     Line = workOrder.Line,
                     WashType = workOrder.WashType,
-                    OrderQuantity = workOrder.OrderQuantity,
+                    // ✅ FIX: Convert int? to int
+                    OrderQuantity = workOrder.OrderQuantity.GetValueOrDefault(),
                     StageBalances = new Dictionary<string, ProcessBalanceDto>()
                 };
 
@@ -643,10 +647,12 @@ namespace wsahRecieveDelivary.Services
                 result.TotalDelivered = workOrderBalances.Sum(b => b.TotalDelivered);
                 result.OverallBalance = workOrderBalances.Sum(b => b.CurrentBalance);
 
-                if (workOrder.OrderQuantity > 0)
+                // ✅ FIX: Safely handle nullable int for calculation
+                int orderQty = workOrder.OrderQuantity.GetValueOrDefault();
+                if (orderQty > 0)
                 {
                     result.CompletionPercentage = Math.Round(
-                        (decimal)result.TotalDelivered / workOrder.OrderQuantity * 100,
+                        (decimal)result.TotalDelivered / orderQty * 100,
                         2);
                 }
 
@@ -655,6 +661,7 @@ namespace wsahRecieveDelivary.Services
 
             return results;
         }
+   
 
         // ==========================================
         // GET STAGE SUMMARY

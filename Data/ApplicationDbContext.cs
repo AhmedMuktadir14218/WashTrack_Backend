@@ -17,6 +17,8 @@ namespace wsahRecieveDelivary.Data
         public DbSet<WorkOrder> WorkOrders { get; set; }
         public DbSet<WashTransaction> WashTransactions { get; set; }
         public DbSet<ProcessStageBalance> ProcessStageBalances { get; set; }
+        // ✅ NEW: Add SyncLog DbSet
+        public DbSet<SyncLog> SyncLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -157,7 +159,14 @@ namespace wsahRecieveDelivary.Data
                 entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             });
 
-
+            // ✅ NEW: Configure SyncLog
+            modelBuilder.Entity<SyncLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.SyncType);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            });
 
             SeedData(modelBuilder);
         }
